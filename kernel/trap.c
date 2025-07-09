@@ -51,26 +51,25 @@ usertrap(void)
   p->trapframe->epc = r_sepc();
   
   if(r_scause() == 8){ //用户态系统调用就会来到这个地方
-    // // system call
+    // system call
 
     // if(killed(p))
     //   exit(-1);
 
-    // // sepc points to the ecall instruction,
-    // // but we want to return to the next instruction.
-    // p->trapframe->epc += 4;
+    // sepc points to the ecall instruction,
+    // but we want to return to the next instruction.
+    p->trapframe->epc += 4;
 
-    // // an interrupt will change sepc, scause, and sstatus,
-    // // so enable only now that we're done with those registers.
-    // intr_on();
+    // an interrupt will change sepc, scause, and sstatus,
+    // so enable only now that we're done with those registers.
+    intr_on();
 
-    // syscall();
+    syscall();
 
-
-    // 对文件进行修改，不做系统调用处理，仅仅打印信息
-    printf("get a syscall from proc %d\n", myproc()->pid); 
-    p->trapframe->epc += 4; 
-    intr_on(); 
+    // // 对文件进行修改，不做系统调用处理，仅仅打印信息
+    // printf("get a syscall from proc %d\n", myproc()->pid); 
+    // p->trapframe->epc += 4; 
+    // intr_on(); 
 
   } else if((which_dev = devintr()) != 0){
     // ok
