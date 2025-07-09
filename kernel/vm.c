@@ -14,7 +14,7 @@ pagetable_t kernel_pagetable;
 
 extern char etext[];  // kernel.ld sets this to end of kernel code.
 
-// extern char trampoline[]; // trampoline.S
+extern char trampoline[]; // trampoline.S
 
 // Make a direct-map page table for the kernel.
 // 这个函数应该要做一些修改，有的内容不应该出现
@@ -31,8 +31,8 @@ kvmmake(void)
   // uart registers
   kvmmap(kpgtbl, UART0, UART0, PGSIZE, PTE_R | PTE_W);
 
-//   // virtio mmio disk interface
-//   kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
+  // // virtio mmio disk interface
+  // kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
 
   // PLIC
   kvmmap(kpgtbl, PLIC, PLIC, 0x4000000, PTE_R | PTE_W);
@@ -43,12 +43,13 @@ kvmmake(void)
   // map kernel data and the physical RAM we'll make use of.
   kvmmap(kpgtbl, (uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
 
-//   // map the trampoline for trap entry/exit to
-//   // the highest virtual address in the kernel.
-//   kvmmap(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
+  // map the trampoline for trap entry/exit to
+  // the highest virtual address in the kernel.
+  // 增加对trampoline的映射
+  kvmmap(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
 
-//   // allocate and map a kernel stack for each process.
-//   proc_mapstacks(kpgtbl);
+  // allocate and map a kernel stack for each process.
+  proc_mapstacks(kpgtbl);
   
   return kpgtbl;
 }
@@ -181,61 +182,61 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
-// // Remove npages of mappings starting from va. va must be
-// // page-aligned. The mappings must exist.
-// // Optionally free the physical memory.
-// void
-// uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
-// {
-//   uint64 a;
-//   pte_t *pte;
+// Remove npages of mappings starting from va. va must be
+// page-aligned. The mappings must exist.
+// Optionally free the physical memory.
+void
+uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
+{
+  uint64 a;
+  pte_t *pte;
 
-//   if((va % PGSIZE) != 0)
-//     panic("uvmunmap: not aligned");
+  if((va % PGSIZE) != 0)
+    panic("uvmunmap: not aligned");
 
-//   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
-//     if((pte = walk(pagetable, a, 0)) == 0)
-//       panic("uvmunmap: walk");
-//     if((*pte & PTE_V) == 0)
-//       panic("uvmunmap: not mapped");
-//     if(PTE_FLAGS(*pte) == PTE_V)
-//       panic("uvmunmap: not a leaf");
-//     if(do_free){
-//       uint64 pa = PTE2PA(*pte);
-//       kfree((void*)pa);
-//     }
-//     *pte = 0;
-//   }
-// }
+  for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
+    if((pte = walk(pagetable, a, 0)) == 0)
+      panic("uvmunmap: walk");
+    if((*pte & PTE_V) == 0)
+      panic("uvmunmap: not mapped");
+    if(PTE_FLAGS(*pte) == PTE_V)
+      panic("uvmunmap: not a leaf");
+    if(do_free){
+      uint64 pa = PTE2PA(*pte);
+      kfree((void*)pa);
+    }
+    *pte = 0;
+  }
+}
 
-// // create an empty user page table.
-// // returns 0 if out of memory.
-// pagetable_t
-// uvmcreate()
-// {
-//   pagetable_t pagetable;
-//   pagetable = (pagetable_t) kalloc();
-//   if(pagetable == 0)
-//     return 0;
-//   memset(pagetable, 0, PGSIZE);
-//   return pagetable;
-// }
+// create an empty user page table.
+// returns 0 if out of memory.
+pagetable_t
+uvmcreate()
+{
+  pagetable_t pagetable;
+  pagetable = (pagetable_t) kalloc();
+  if(pagetable == 0)
+    return 0;
+  memset(pagetable, 0, PGSIZE);
+  return pagetable;
+}
 
-// // Load the user initcode into address 0 of pagetable,
-// // for the very first process.
-// // sz must be less than a page.
-// void
-// uvmfirst(pagetable_t pagetable, uchar *src, uint sz)
-// {
-//   char *mem;
+// Load the user initcode into address 0 of pagetable,
+// for the very first process.
+// sz must be less than a page.
+void
+uvmfirst(pagetable_t pagetable, uchar *src, uint sz)
+{
+  char *mem;
 
-//   if(sz >= PGSIZE)
-//     panic("uvmfirst: more than a page");
-//   mem = kalloc();
-//   memset(mem, 0, PGSIZE);
-//   mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
-//   memmove(mem, src, sz);
-// }
+  if(sz >= PGSIZE)
+    panic("uvmfirst: more than a page");
+  mem = kalloc();
+  memset(mem, 0, PGSIZE);
+  mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+  memmove(mem, src, sz);
+}
 
 // // Allocate PTEs and physical memory to grow process from oldsz to
 // // newsz, which need not be page aligned.  Returns new size or 0 on error.
@@ -283,35 +284,35 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 //   return newsz;
 // }
 
-// // Recursively free page-table pages.
-// // All leaf mappings must already have been removed.
-// void
-// freewalk(pagetable_t pagetable)
-// {
-//   // there are 2^9 = 512 PTEs in a page table.
-//   for(int i = 0; i < 512; i++){
-//     pte_t pte = pagetable[i];
-//     if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
-//       // this PTE points to a lower-level page table.
-//       uint64 child = PTE2PA(pte);
-//       freewalk((pagetable_t)child);
-//       pagetable[i] = 0;
-//     } else if(pte & PTE_V){
-//       panic("freewalk: leaf");
-//     }
-//   }
-//   kfree((void*)pagetable);
-// }
+// Recursively free page-table pages.
+// All leaf mappings must already have been removed.
+void
+freewalk(pagetable_t pagetable)
+{
+  // there are 2^9 = 512 PTEs in a page table.
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      // this PTE points to a lower-level page table.
+      uint64 child = PTE2PA(pte);
+      freewalk((pagetable_t)child);
+      pagetable[i] = 0;
+    } else if(pte & PTE_V){
+      panic("freewalk: leaf");
+    }
+  }
+  kfree((void*)pagetable);
+}
 
-// // Free user memory pages,
-// // then free page-table pages.
-// void
-// uvmfree(pagetable_t pagetable, uint64 sz)
-// {
-//   if(sz > 0)
-//     uvmunmap(pagetable, 0, PGROUNDUP(sz)/PGSIZE, 1);
-//   freewalk(pagetable);
-// }
+// Free user memory pages,
+// then free page-table pages.
+void
+uvmfree(pagetable_t pagetable, uint64 sz)
+{
+  if(sz > 0)
+    uvmunmap(pagetable, 0, PGROUNDUP(sz)/PGSIZE, 1);
+  freewalk(pagetable);
+}
 
 // // Given a parent process's page table, copy
 // // its memory into a child's page table.

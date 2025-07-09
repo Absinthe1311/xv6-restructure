@@ -14,6 +14,8 @@ main()
   if(cpuid() == 0){
     //consoleinit();
 
+    uartinit();
+    
     // printf输出部分
     printfinit();
     printf("\n");
@@ -25,7 +27,10 @@ main()
     kvminit();       // create kernel page table
     kvminithart();   // turn on paging
 
-    // procinit();      // process table
+    // 进程表的初始化
+    procinit();      // 这里做了修改，只对一个进程进行了初始化
+
+    printf("xv6 passed the procinit()\n");
 
     // 中断处理部分
     trapinit();      // trap vectors
@@ -37,10 +42,14 @@ main()
     // iinit();         // inode table
     // fileinit();      // file table
     // virtio_disk_init(); // emulated hard disk
-    // userinit();      // first user process
 
-    __sync_synchronize();
+    //userinit();      // first user process
     started = 1;
+    __sync_synchronize();
+    //started = 1;
+    // 修改了userinit()和started=1的位置
+    userinit();
+
   } else {
     while(started == 0)
       ;
@@ -50,11 +59,12 @@ main()
     // 内存处理部分
     kvminithart();    // turn on paging
 
+    // 中断处理部分
     trapinithart();   // install kernel trap vector
-    // plicinithart();   // ask PLIC for device interrupts
+    plicinithart();   // ask PLIC for device interrupts
   }
   //while(1) ;
   //scheduler();        
   intr_on(); // 开放中断
-  while(1) ;
+  while(1) ; // 其余的CPU都会陷入这个死循环
 }

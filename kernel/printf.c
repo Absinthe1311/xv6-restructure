@@ -205,7 +205,7 @@ printfinit(void)
 {
   initlock(&pr.lock, "pr");
 
-  uartinit(); // 使用printf.c直接替代console.c中的打印函数，需要在这里初始化串口
+   // 使用printf.c直接替代console.c中的打印函数，需要在这里初始化串口
 
   pr.locking = 1;
 }

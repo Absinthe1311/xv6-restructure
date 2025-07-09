@@ -14,11 +14,11 @@ SECTIONS
     *(.text .text.*)
     . = ALIGN(0x1000);
     
-    /* 记录trampoline的起始地址，目前用不到*/
-     /* _trampoline = .; 
+    /* 记录trampoline的起始地址，目前用不到*/ /*现在启用trampoline相关内容*/
+     _trampoline = .; 
     *(trampsec)
     . = ALIGN(0x1000);
-    ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page");  */
+    ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page"); 
 
     PROVIDE(etext = .); /* 定义符号etext，表示代码段结束位置*/
   }

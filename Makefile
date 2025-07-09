@@ -12,6 +12,8 @@ OBJS = \
   $K/spinlock.o \
   $K/start.o \
   $K/string.o \
+  $K/swtch.o \
+  $K/trampoline.o \
   $K/trap.o \
   $K/uart.o \
   $K/vm.o \

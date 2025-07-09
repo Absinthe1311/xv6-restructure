@@ -40,6 +40,7 @@ acquire(struct spinlock *lk)
 
   // Record info about lock acquisition for holding() and debugging.
   lk->cpu = mycpu();
+  //printf("测试用：进入了acquire()\n");
 }
 
 // Release the lock.

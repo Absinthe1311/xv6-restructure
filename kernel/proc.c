@@ -8,17 +8,22 @@
 
 struct cpu cpus[NCPU];
 
-// struct proc proc[NPROC];
+// 现今对这个proc进行修改，只使用一个proc结构体
+
+struct proc proc[NPROC];
+
+struct proc *initproc;
 
 // struct proc *initproc;
 
-// int nextpid = 1;
-// struct spinlock pid_lock;
+int nextpid = 1;
+// 这个是用来访问变量nextpid前设置的锁，现阶段可以不要
+// struct spinlock pid_lock; 
 
 // extern void forkret(void);
 // static void freeproc(struct proc *p);
 
-// extern char trampoline[]; // trampoline.S
+extern char trampoline[]; // trampoline.S
 
 // // helps ensure that wakeups of wait()ing
 // // parents are not lost. helps obey the
@@ -26,37 +31,51 @@ struct cpu cpus[NCPU];
 // // must be acquired before any p->lock.
 // struct spinlock wait_lock;
 
-// // Allocate a page for each process's kernel stack.
-// // Map it high in memory, followed by an invalid
-// // guard page.
-// void
-// proc_mapstacks(pagetable_t kpgtbl)
-// {
-//   struct proc *p;
-  
-//   for(p = proc; p < &proc[NPROC]; p++) {
-//     char *pa = kalloc();
-//     if(pa == 0)
-//       panic("kalloc");
-//     uint64 va = KSTACK((int) (p - proc));
-//     kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
-//   }
-// }
+// Allocate a page for each process's kernel stack.
+// Map it high in memory, followed by an invalid
+// guard page.
+// 原来是将所有进程分配的栈记录在内核页表上面，现在只有一个proc结构体
+void
+proc_mapstacks(pagetable_t kpgtbl)
+{
+  //struct proc *p;
+  // for(p = proc; p < &proc[NPROC]; p++) {
+  //   char *pa = kalloc();
+  //   if(pa == 0)
+  //     panic("kalloc");
+  //   uint64 va = KSTACK((int) (p - proc));
+  //   kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
+  // }
 
-// // initialize the proc table.
-// void
-// procinit(void)
-// {
-//   struct proc *p;
-  
-//   initlock(&pid_lock, "nextpid");
-//   initlock(&wait_lock, "wait_lock");
-//   for(p = proc; p < &proc[NPROC]; p++) {
-//       initlock(&p->lock, "proc");
-//       p->state = UNUSED;
-//       p->kstack = KSTACK((int) (p - proc));
-//   }
-// }
+  struct proc *p = proc;
+  char *pa = kalloc();
+  if(pa == 0)
+    panic("kalloc");
+  uint64 va = KSTACK((int) (p - proc));
+  kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
+}
+
+// initialize the proc table.
+void
+procinit(void)
+{
+  struct proc *p;
+
+  // initlock(&pid_lock, "nextpid");
+  // initlock(&wait_lock, "wait_lock");
+  // for(p = proc; p < &proc[NPROC]; p++) {
+  //     initlock(&p->lock, "proc");
+  //     p->state = UNUSED;
+  //     p->kstack = KSTACK((int) (p - proc));
+  // }
+
+  // struct proc *p = &proc;
+  // p->state = UNUSED;
+  // p->kstack = KSTACK((int)0);
+  p = proc;
+  p -> state = UNUSED;
+  p->kstack = KSTACK((int)(p-proc));
+}
 
 // Must be called with interrupts disabled,
 // to prevent race with process being moved
@@ -75,79 +94,143 @@ mycpu(void)
 {
   int id = cpuid();
   struct cpu *c = &cpus[id];
+  //printf("测试用：进入了mycpu()\n");
   return c;
 }
 
-// // Return the current struct proc *, or zero if none.
-// struct proc*
-// myproc(void)
-// {
-//   push_off();
-//   struct cpu *c = mycpu();
-//   struct proc *p = c->proc;
-//   pop_off();
-//   return p;
-// }
+// Return the current struct proc *, or zero if none.
+struct proc*
+myproc(void)
+{
+  push_off();
+  struct cpu *c = mycpu();
+  struct proc *p = c->proc;
+  pop_off();
+  return p;
+}
 
-// int
-// allocpid()
-// {
-//   int pid;
+int
+allocpid()
+{
+  int pid;
   
-//   acquire(&pid_lock);
-//   pid = nextpid;
-//   nextpid = nextpid + 1;
-//   release(&pid_lock);
+  // 现在只有一个进程，所以这个锁不需要
+  // acquire(&pid_lock);
+  pid = nextpid;
+  nextpid = nextpid + 1;
+  // release(&pid_lock);
 
-//   return pid;
-// }
+  return pid;
+}
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+// Look in the process table for an UNUSED proc.
+// If found, initialize state required to run in the kernel,
+// and return with p->lock held.
+// If there are no free procs, or a memory allocation fails, return 0.
 
-// // Look in the process table for an UNUSED proc.
-// // If found, initialize state required to run in the kernel,
-// // and return with p->lock held.
-// // If there are no free procs, or a memory allocation fails, return 0.
+
+
+
+static struct proc*
+allocproc(void)
+{
+  struct proc *p = proc;
+
+  // for(p = proc; p < &proc[NPROC]; p++) {
+  //   acquire(&p->lock);
+  //   if(p->state == UNUSED) {
+  //     goto found;
+  //   } else {
+  //     release(&p->lock);
+  //   }
+  // }
+  // return 0;
+
+  // 现在只设置了一个proc结构体，对上文的修改如下
+  //p = &proc;
+  if(p->state == UNUSED){
+    goto found;
+  }
+  return 0;
+
+found:
+  p->pid = allocpid();
+  p->state = USED;
+
+  // Allocate a trapframe page.
+  // 为这个进程分配一页物理页作为陷入帧
+  if((p->trapframe = (struct trapframe *)kalloc()) == 0){
+    //freeproc(p);
+    //release(&p->lock);
+    return 0;
+  }
+
+  // An empty user page table.
+  p->pagetable = proc_pagetable(p);
+  if(p->pagetable == 0){
+    //freeproc(p);
+    //release(&p->lock);
+    return 0;
+  }
+
+  // Set up new context to start executing at forkret,
+  // which returns to user space.
+  // 设置进程上下文
+  memset(&p->context, 0, sizeof(p->context));
+  // 这里修改forkret,修改为usertrapret
+  // p->context.ra = (uint64)forkret;
+  p->context.ra = (uint64)usertrapret; // 这样做完我的首进程的返回地址就是usertrapret
+  p->context.sp = p->kstack + PGSIZE;
+
+  return p;
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 // static struct proc*
 // allocproc(void)
 // {
 //   struct proc *p;
 
-//   for(p = proc; p < &proc[NPROC]; p++) {
-//     acquire(&p->lock);
-//     if(p->state == UNUSED) {
-//       goto found;
-//     } else {
-//       release(&p->lock);
-//     }
-//   }
-//   return 0;
-
-// found:
+//   p = single_proc;
 //   p->pid = allocpid();
-//   p->state = USED;
+//   //p->state = USED;
 
 //   // Allocate a trapframe page.
 //   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
-//     freeproc(p);
-//     release(&p->lock);
+//     //freeproc(p);
+//     //release(&p->lock);
 //     return 0;
 //   }
 
 //   // An empty user page table.
 //   p->pagetable = proc_pagetable(p);
 //   if(p->pagetable == 0){
-//     freeproc(p);
-//     release(&p->lock);
+//     //freeproc(p);
+//     //release(&p->lock);
 //     return 0;
 //   }
 
 //   // Set up new context to start executing at forkret,
 //   // which returns to user space.
 //   memset(&p->context, 0, sizeof(p->context));
-//   p->context.ra = (uint64)forkret;
+//   p->context.ra = (uint64)usertrapret;
 //   p->context.sp = p->kstack + PGSIZE;
-
+  
 //   return p;
 // }
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+
 
 // // free a proc structure and the data hanging from it,
 // // including user pages.
@@ -171,53 +254,53 @@ mycpu(void)
 //   p->state = UNUSED;
 // }
 
-// // Create a user page table for a given process, with no user memory,
-// // but with trampoline and trapframe pages.
-// pagetable_t
-// proc_pagetable(struct proc *p)
-// {
-//   pagetable_t pagetable;
+// Create a user page table for a given process, with no user memory,
+// but with trampoline and trapframe pages.
+pagetable_t
+proc_pagetable(struct proc *p)
+{
+  pagetable_t pagetable;
 
-//   // An empty page table.
-//   pagetable = uvmcreate();
-//   if(pagetable == 0)
-//     return 0;
+  // An empty page table.
+  pagetable = uvmcreate();
+  if(pagetable == 0)
+    return 0;
 
-//   // map the trampoline code (for system call return)
-//   // at the highest user virtual address.
-//   // only the supervisor uses it, on the way
-//   // to/from user space, so not PTE_U.
-//   if(mappages(pagetable, TRAMPOLINE, PGSIZE,
-//               (uint64)trampoline, PTE_R | PTE_X) < 0){
-//     uvmfree(pagetable, 0);
-//     return 0;
-//   }
+  // map the trampoline code (for system call return)
+  // at the highest user virtual address.
+  // only the supervisor uses it, on the way
+  // to/from user space, so not PTE_U.
+  if(mappages(pagetable, TRAMPOLINE, PGSIZE,
+              (uint64)trampoline, PTE_R | PTE_X) < 0){
+    uvmfree(pagetable, 0);
+    return 0;
+  }
 
-//   // map the trapframe page just below the trampoline page, for
-//   // trampoline.S.
-//   if(mappages(pagetable, TRAPFRAME, PGSIZE,
-//               (uint64)(p->trapframe), PTE_R | PTE_W) < 0){
-//     uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-//     uvmfree(pagetable, 0);
-//     return 0;
-//   }
+  // map the trapframe page just below the trampoline page, for
+  // trampoline.S.
+  if(mappages(pagetable, TRAPFRAME, PGSIZE,
+              (uint64)(p->trapframe), PTE_R | PTE_W) < 0){
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmfree(pagetable, 0);
+    return 0;
+  }
 
-//   return pagetable;
-// }
+  return pagetable;
+}
 
-// // Free a process's page table, and free the
-// // physical memory it refers to.
-// void
-// proc_freepagetable(pagetable_t pagetable, uint64 sz)
-// {
-//   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
-//   uvmunmap(pagetable, TRAPFRAME, 1, 0);
-//   uvmfree(pagetable, sz);
-// }
+// Free a process's page table, and free the
+// physical memory it refers to.
+void
+proc_freepagetable(pagetable_t pagetable, uint64 sz)
+{
+  uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+  uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  uvmfree(pagetable, sz);
+}
 
-// // a user program that calls exec("/init")
-// // assembled from ../user/initcode.S
-// // od -t xC ../user/initcode
+// a user program that calls exec("/init")
+// assembled from ../user/initcode.S
+// od -t xC ../user/initcode
 // uchar initcode[] = {
 //   0x17, 0x05, 0x00, 0x00, 0x13, 0x05, 0x45, 0x02,
 //   0x97, 0x05, 0x00, 0x00, 0x93, 0x85, 0x35, 0x02,
@@ -228,7 +311,102 @@ mycpu(void)
 //   0x00, 0x00, 0x00, 0x00
 // };
 
-// // Set up first user process.
+// 使用老师提供的initcode
+// int main() { 
+// syscall(12); // 封装 12号系统调用，a7寄存器装入12后执行ecall指令 
+// syscall(12); // 再次发起相同系统调用 
+// while(1) ; // 死循环 
+// return 0; 
+// } 
+uchar initcode[] = { 
+0x13, 0x01, 0x01, 0xff, 0x23, 0x34, 0x11, 0x00, 
+0x23, 0x30, 0x81, 0x00, 0x13, 0x04, 0x01, 0x01, 
+0x13, 0x05, 0x40, 0x01, 0x97, 0x00, 0x00, 0x00, 
+0xe7, 0x80, 0x80, 0x01, 0x13, 0x05, 0x40, 0x01, 
+0x97, 0x00, 0x00, 0x00, 0xe7, 0x80, 0xc0, 0x00, 
+0x6f, 0x00, 0x00, 0x00, 0x93, 0x08, 0xc0, 0x00, 
+0x73, 0x00, 0x00, 0x00, 0x67, 0x80, 0x00, 0x00 
+};
+
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+
+
+// Set up first user process.
+// 这个应该是第一个用户进程的初始化  我的存在问题的代码
+void
+userinit(void)
+{
+  struct proc *p;
+
+  p = allocproc();
+  initproc = p;
+  
+  // allocate one user page and copy initcode's instructions
+  // and data into it.
+  uvmfirst(p->pagetable, initcode, sizeof(initcode));
+  p->sz = 4*PGSIZE;
+  // 全局数据页1
+  char* mem1 = kalloc();
+  if(mem1 == 0)
+    panic("userinit: out of memory for global data page1");
+  memset(mem1,0,PGSIZE);
+  if(mappages(p->pagetable,PGSIZE,PGSIZE,(uint64)mem1,PTE_W|PTE_R|PTE_U) < 0)
+  {
+    kfree(mem1);
+    panic("userinit: can't map global data page 1");
+  }
+  // 全局数据页2
+  char* mem2 = kalloc();
+  if(mem2 == 0)
+    panic("userinit: out of memory for global data page2");
+  memset(mem2,0,PGSIZE);
+  if(mappages(p->pagetable,2*PGSIZE,PGSIZE,(uint64)mem2,PTE_W|PTE_R|PTE_U) < 0)
+  {
+    kfree(mem2);
+    panic("userinit: can't map global data page 2");
+  }
+  // 栈
+  char *stack = kalloc();
+  if(stack == 0)
+    panic("userinit: out of memory for stack");
+  memset(stack, 0, PGSIZE);  // 栈也初始化为0
+  if(mappages(p->pagetable, 3*PGSIZE, PGSIZE, (uint64)stack, PTE_W|PTE_R|PTE_U) < 0){
+    kfree(stack);
+    panic("userinit: can't map stack page");
+  }
+
+  // prepare for the very first "return" from kernel to user.
+  p->trapframe->epc = 0;      // user program counter
+  p->trapframe->sp = 4*PGSIZE;  // user stack pointer
+
+  memset(&p->context, 0, sizeof(p->context));
+  //p->context.ra = (uint64)usertrapret;
+  p->context.sp = p->kstack + PGSIZE; 
+  p->context.ra = (uint64)usertrapret;
+  
+
+  safestrcpy(p->name, "initcode", sizeof(p->name));
+  // 不知道这个有没有用，这个好像涉及到了文件，现在先注释
+  // p->cwd = namei("/");
+
+  p->state = RUNNABLE; 
+
+  // release(&p->lock);
+
+  struct cpu *c = mycpu();
+  c->proc = p;
+  swtch(&(c->context),&(p->context));
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+
+// Set up first user process.
+// 成功通过的代码
 // void
 // userinit(void)
 // {
@@ -240,19 +418,48 @@ mycpu(void)
 //   // allocate one user page and copy initcode's instructions
 //   // and data into it.
 //   uvmfirst(p->pagetable, initcode, sizeof(initcode));
-//   p->sz = PGSIZE;
+//   p->sz =4*PGSIZE;
+  
+//   uint64 global_base = PGSIZE; 
+//   for (int i = 0; i < 2; i++) {
+//     char *mem = kalloc();                
+//     if(mem == 0)
+//       panic("userinit: kalloc failed for global");
+//     memset(mem, 0, PGSIZE);              
+//     if(mappages(p->pagetable, global_base + i*PGSIZE, PGSIZE, (uint64)mem,PTE_R | PTE_W | PTE_U) < 0)
+//       panic("userinit: mappages global failed");
+//   }
 
+//   uint64 stack_base = 3*PGSIZE;  
+//   char *stack = kalloc();
+//   if(stack == 0)
+//       panic("userinit: kalloc failed for stack");
+//   if(mappages(p->pagetable, stack_base, PGSIZE, (uint64)stack,PTE_R | PTE_W | PTE_U) < 0)
+//     panic("userinit: mappages stack failed");
+  
+  
 //   // prepare for the very first "return" from kernel to user.
 //   p->trapframe->epc = 0;      // user program counter
-//   p->trapframe->sp = PGSIZE;  // user stack pointer
+//   p->trapframe->sp = 4*PGSIZE;  // user stack pointer
 
 //   safestrcpy(p->name, "initcode", sizeof(p->name));
-//   p->cwd = namei("/");
+//   //p->cwd = namei("/");
+//   //p->state = RUNNABLE;
+//   //release(&p->lock);
+  
+//   memset(&p->context, 0, sizeof(p->context));
+//   p->context.ra = (uint64)usertrapret;
+//   p->context.sp = p->kstack + PGSIZE; 
+//   //printf("allocproc: context.ra=0x%lx\n", p->context.ra);
 
-//   p->state = RUNNABLE;
-
-//   release(&p->lock);
+//   struct cpu *c = mycpu();
+//   c->proc = p;
+//   swtch(&(c->context),&(p->context));
 // }
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 // // Grow or shrink user memory by n bytes.
 // // Return 0 on success, -1 on failure.
