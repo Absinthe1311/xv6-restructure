@@ -49,12 +49,17 @@ usertrap(void)
   
   // save user program counter.
   p->trapframe->epc = r_sepc();
+
+  if(which_dev == 2)
+  {
+    panic("which_dev == 2\n");
+  }
   
   if(r_scause() == 8){ //用户态系统调用就会来到这个地方
     // system call
 
-    // if(killed(p))
-    //   exit(-1);
+    if(killed(p))
+      exit(-1);
 
     // sepc points to the ecall instruction,
     // but we want to return to the next instruction.
@@ -76,15 +81,15 @@ usertrap(void)
   } else {
     printf("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
     printf("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
-    // setkilled(p);
+    setkilled(p);
   }
 
-  // if(killed(p))
-  //   exit(-1);
+  if(killed(p))
+    exit(-1);
 
-  // // give up the CPU if this is a timer interrupt.
-  // if(which_dev == 2)
-  //   yield(); //等下要把这个注释掉 这个是用来处理时钟中断的
+  // give up the CPU if this is a timer interrupt.
+  if(which_dev == 2)
+    yield(); //等下要把这个注释掉 这个是用来处理时钟中断的
 
   usertrapret();
 }
@@ -134,8 +139,10 @@ usertrapret(void)
   // jump to userret in trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.
-  uint64 trampoline_userret = TRAMPOLINE + (userret - trampoline);
-  ((void (*)(uint64))trampoline_userret)(satp);
+  uint64 trampoline_userret = TRAMPOLINE + (userret - trampoline); // 看作一个函数指针
+  // 这个看作在调用 userret()这个函数，用于从内核到用户态的，这个函数就放在trampoline_userret这个位置
+  // 后面的satp是参数，应该是这个进程的用户态的页表
+  ((void (*)(uint64))trampoline_userret)(satp);  
 }
 
 // interrupts and exceptions from kernel code go here via kernelvec,
@@ -159,10 +166,10 @@ kerneltrap()
     panic("kerneltrap");
   }
 
-// 老师的要求好像是注释这个地方
-//   // give up the CPU if this is a timer interrupt.
-//   if(which_dev == 2 && myproc() != 0)
-//     yield();
+  //老师的要求好像是注释这个地方
+  // give up the CPU if this is a timer interrupt.
+  if(which_dev == 2 && myproc() != 0)
+    yield();
 
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
@@ -180,7 +187,7 @@ clockintr()
         printf("T");
     }
     // 这里先注释，好像是用来唤醒进程的内容
-    //wakeup(&ticks);
+    wakeup(&ticks);
     release(&tickslock);
   }
 

@@ -28,7 +28,7 @@ main()
     kvminithart();   // turn on paging
 
     // 进程表的初始化
-    procinit();      // 这里做了修改，只对一个进程进行了初始化
+    procinit();      // 恢复为了原来的procinit()
 
     printf("xv6 passed the procinit()\n");
 
@@ -43,11 +43,19 @@ main()
     // fileinit();      // file table
     // virtio_disk_init(); // emulated hard disk
 
-    //userinit();      // first user process
+
+    /////////////////////////////////////////////
+    /*    这个是原来的实现方式     */
+      // //userinit();      // first user process
+      // started = 1;
+      // __sync_synchronize();
+      // //started = 1;
+      // // 修改了userinit()和started=1的位置
+      // userinit();
+    /////////////////////////////////////////////
+    /*    现在修改为原来的main的样子        */
     started = 1;
     __sync_synchronize();
-    //started = 1;
-    // 修改了userinit()和started=1的位置
     userinit();
 
   } else {
@@ -63,8 +71,7 @@ main()
     trapinithart();   // install kernel trap vector
     plicinithart();   // ask PLIC for device interrupts
   }
-  //while(1) ;
-  //scheduler();        
-  intr_on(); // 开放中断
-  while(1) ; // 其余的CPU都会陷入这个死循环
+  scheduler();        
+  // intr_on(); // 开放中断
+  // while(1) ; // 其余的CPU都会陷入这个死循环
 }

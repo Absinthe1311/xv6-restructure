@@ -8,7 +8,7 @@
         # to work when it switches page tables.
         # kernel.ld causes this code to start at 
         # a page boundary.
-        #
+        # 发生中断估计也是先到这个地方走uservec,切换到内核态
 
 #include "riscv.h"
 #include "memlayout.h"
@@ -148,4 +148,5 @@ userret:
         
         # return to user mode and user pc.
         # usertrapret() set up sstatus and sepc.
+        # 这个sret指令跳跳转到epc（用户态的程序计数器）这个位置执行
         sret

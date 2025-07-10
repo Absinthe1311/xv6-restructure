@@ -14,12 +14,13 @@ OBJS = \
   $K/string.o \
   $K/swtch.o \
   $K/syscall.o \
+  $K/sysfile.o \
   $K/sysproc.o \
   $K/trampoline.o \
   $K/trap.o \
   $K/uart.o \
   $K/vm.o \
-
+  $K/console.o \
 
 
 
