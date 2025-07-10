@@ -38,26 +38,22 @@ main()
     plicinit();      // set up interrupt controller
     plicinithart();  // ask PLIC for device interrupts
 
-    // binit();         // buffer cache
+    // buffer cache的初始化
+    binit();         // buffer cache
+
     // iinit();         // inode table
     // fileinit();      // file table
-    // virtio_disk_init(); // emulated hard disk
 
+    // 磁盘的初始化
+    virtio_disk_init(); // emulated hard disk 磁盘的初始化
 
-    /////////////////////////////////////////////
-    /*    这个是原来的实现方式     */
-      // //userinit();      // first user process
-      // started = 1;
-      // __sync_synchronize();
-      // //started = 1;
-      // // 修改了userinit()和started=1的位置
-      // userinit();
-    /////////////////////////////////////////////
-    /*    现在修改为原来的main的样子        */
-    started = 1;
-    __sync_synchronize();
     userinit();
+    __sync_synchronize();
+    started = 1;
 
+    // started = 1;
+    // __sync_synchronize();
+    // userinit();
   } else {
     while(started == 0)
       ;

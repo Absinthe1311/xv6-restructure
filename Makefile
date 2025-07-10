@@ -21,6 +21,11 @@ OBJS = \
   $K/uart.o \
   $K/vm.o \
   $K/console.o \
+  $K/bio.o \
+  $K/sleeplock.o \
+  $K/virtio_disk.o \
+
+
 
 
 
@@ -81,8 +86,17 @@ $K/kernel: $(OBJS) $K/kernel.ld
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
 
-tags: $(OBJS) _init
-	etags *.S *.c
+mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
+	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
+
+# tags: $(OBJS) _init
+# 	etags *.S *.c
+
+
+UPROGS=\
+
+fs.img: mkfs/mkfs README $(UPROGS)
+	mkfs/mkfs fs.img README $(UPROGS)
 
 # Prevent deletion of intermediate files, e.g. cat.o, after first build, so
 # that disk image changes after first build are persistent until clean.  More
@@ -95,7 +109,12 @@ tags: $(OBJS) _init
 clean:
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
-	$K/kernel
+	$U/initcode $U/initcode.out $K/kernel fs.img \
+	mkfs/mkfs .gdbinit \
+        $U/usys.S \
+	$(UPROGS)
+
+
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25002)
@@ -109,9 +128,10 @@ endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
+QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
+QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
-
-qemu: $K/kernel 
+qemu: $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv

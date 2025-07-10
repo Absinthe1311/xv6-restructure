@@ -17,6 +17,10 @@
 // end -- start of kernel page allocation area
 // PHYSTOP -- end RAM used by the kernel
 
+//////////////////////////////////////////
+// 文件直接使用了xv6标准文件，应该没有错误 //
+//////////////////////////////////////////
+
 // qemu puts UART registers here in physical memory.
 #define UART0 0x10000000L
 #define UART0_IRQ 10

@@ -2,6 +2,10 @@
 // kernel stacks, page-table pages,
 // and pipe buffers. Allocates whole 4096-byte pages.
 
+//////////////////////////////////////////
+// 文件直接使用了xv6标准文件，应该没有错误 //
+//////////////////////////////////////////
+
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"

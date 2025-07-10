@@ -13,3 +13,7 @@
 #define MAXPATH      128   // maximum file path name
 #define USERSTACK    1     // user stack pages
 
+
+//////////////////////////////////////////
+// 文件直接使用了xv6标准文件，应该没有错误 //
+//////////////////////////////////////////

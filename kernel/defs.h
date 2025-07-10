@@ -9,6 +9,11 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+
+//////////////////////////////////////////
+// 文件直接使用了xv6标准文件，应该没有错误 //
+//////////////////////////////////////////
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);

@@ -1,10 +1,10 @@
 #include "param.h"
 #include "types.h"
 #include "memlayout.h"
-// #include "elf.h"
+#include "elf.h"
 #include "riscv.h"
 #include "defs.h"
-// #include "fs.h"
+#include "fs.h"
 
 /*
  * the kernel's page table.
@@ -31,8 +31,8 @@ kvmmake(void)
   // uart registers
   kvmmap(kpgtbl, UART0, UART0, PGSIZE, PTE_R | PTE_W);
 
-  // // virtio mmio disk interface
-  // kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
+  // virtio mmio disk interface
+  kvmmap(kpgtbl, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
 
   // PLIC
   kvmmap(kpgtbl, PLIC, PLIC, 0x4000000, PTE_R | PTE_W);

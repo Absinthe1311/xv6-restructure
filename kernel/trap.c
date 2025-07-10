@@ -220,9 +220,9 @@ devintr()
       uartintr();
     } else if(irq == VIRTIO0_IRQ){
     // 这部分是处理虚拟磁盘的
-    // 目前先注释
-    //   virtio_disk_intr();
-    printf("virtio_disk_intr in trap.c\n");
+    // 目前先注释 第七阶段打开
+    virtio_disk_intr();
+    //printf("virtio_disk_intr in trap.c\n");
     } else if(irq){
       printf("unexpected interrupt irq=%d\n", irq);
     }
