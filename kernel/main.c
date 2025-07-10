@@ -41,8 +41,8 @@ main()
     // buffer cache的初始化
     binit();         // buffer cache
 
-    // iinit();         // inode table
-    // fileinit();      // file table
+    iinit();         // inode table
+    // fileinit();      // file table 这个文件还没引入
 
     // 磁盘的初始化
     virtio_disk_init(); // emulated hard disk 磁盘的初始化

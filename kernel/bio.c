@@ -94,7 +94,7 @@ bget(uint dev, uint blockno)
 }
 
 // Return a locked buf with the contents of the indicated block.
-// 传入物理设备和块号，返回一块已经读好了相关物理块内容的buf
+// 传入物理设备和块号，返回一块已经读好了相关物理块内容的buf 这个块号是物理块号
 struct buf*
 bread(uint dev, uint blockno)
 {

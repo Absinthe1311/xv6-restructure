@@ -24,11 +24,10 @@ OBJS = \
   $K/bio.o \
   $K/sleeplock.o \
   $K/virtio_disk.o \
-
-
-
-
-
+  $K/exec.o \
+  $K/fs.o \
+  $K/log.o \
+  
 
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
@@ -86,23 +85,55 @@ $K/kernel: $(OBJS) $K/kernel.ld
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
 
+# $U/initcode: $U/initcode.S
+# 	$(CC) $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $U/initcode.S -o $U/initcode.o
+# 	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o $U/initcode.out $U/initcode.o
+# 	$(OBJCOPY) -S -O binary $U/initcode.out $U/initcode
+# 	$(OBJDUMP) -S $U/initcode.o > $U/initcode.asm
+
+tags: $(OBJS) _init
+	etags *.S *.c
+
+ULIB = $U/usys.o $U/printf.o $U/umalloc.o
+
+$U/%.o: $U/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<  
+
+# Make sure individual library objects are built (fix indentation with TABS)
+$U/printf.o: $U/printf.c
+	$(CC) $(CFLAGS) -c -o $U/printf.o $U/printf.c
+
+$U/umalloc.o: $U/umalloc.c
+	$(CC) $(CFLAGS) -c -o $U/umalloc.o $U/umalloc.c
+
+# Fix the user program linking rule (use TABS not spaces)
+$U/%: $U/%.o $(ULIB)
+	$(LD) $(LDFLAGS) -T $U/user.ld -o $@ $^
+	$(OBJDUMP) -S $@ > $U/$*.asm
+	$(OBJDUMP) -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $U/$*.sym
+
+$U/usys.S : $U/usys.pl
+	perl $U/usys.pl > $U/usys.S
+
+$U/usys.o : $U/usys.S
+	$(CC) $(CFLAGS) -c -o $U/usys.o $U/usys.S
+
+
 mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
-
-# tags: $(OBJS) _init
-# 	etags *.S *.c
-
-
-UPROGS=\
-
-fs.img: mkfs/mkfs README $(UPROGS)
-	mkfs/mkfs fs.img README $(UPROGS)
 
 # Prevent deletion of intermediate files, e.g. cat.o, after first build, so
 # that disk image changes after first build are persistent until clean.  More
 # details:
 # http://www.gnu.org/software/make/manual/html_node/Chained-Rules.html
 .PRECIOUS: %.o
+
+UPROGS=\
+   $U/execchild1\
+   $U/execchild2\
+
+fs.img: mkfs/mkfs README $(UPROGS)
+	mkfs/mkfs fs.img README $(UPROGS)
 
 -include kernel/*.d user/*.d
 

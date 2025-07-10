@@ -166,7 +166,6 @@ kerneltrap()
     panic("kerneltrap");
   }
 
-  //老师的要求好像是注释这个地方
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2 && myproc() != 0)
     yield();
