@@ -26,7 +26,9 @@ void            bunpin(struct buf*);
 void            consoleinit(void);
 void            consoleintr(int);
 void            consputc(int);
+// 两个添加的内容，替代file中的read和write
 int consolewrite(int user_src, uint64 src, int n);
+int consoleread(int user_dst, uint64 dst, int n);
 
 // exec.c
 int             exec(char*, char**);
@@ -86,7 +88,7 @@ int             pipewrite(struct pipe*, uint64, int);
 int            printf(char*, ...) __attribute__ ((format (printf, 1, 2)));
 void            panic(char*) __attribute__((noreturn));
 void            printfinit(void);
-void            pputc(int c);
+// void            pputc(int c);
 
 // proc.c
 int             cpuid(void);

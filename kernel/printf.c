@@ -15,22 +15,22 @@
 #include "defs.h"
 #include "proc.h"
 
-////////////////////////////
-// 这个函数添加用于替代console.c中的consputc()函数 后续需要的话将pputc修改回来
-# define BACKSPACE 0x100
-void
-pputc(int c)
-{
-  if(c == BACKSPACE){
-    uartputc_sync('\b'); uartputc_sync(' '); uartputc_sync('\b');
-  }
-  else
-  {
-    uartputc_sync(c);
-  }
-}
-
-////////////////////////////
+// 第九阶段，恢复consputc()
+// ////////////////////////////
+// // 这个函数添加用于替代console.c中的consputc()函数 后续需要的话将pputc修改回来 
+// # define BACKSPACE 0x100
+// void
+// pputc(int c)
+// {
+//   if(c == BACKSPACE){
+//     uartputc_sync('\b'); uartputc_sync(' '); uartputc_sync('\b');
+//   }
+//   else
+//   {
+//     uartputc_sync(c);
+//   }
+// }
+// ////////////////////////////
 
 volatile int panicked = 0;
 
@@ -63,21 +63,21 @@ printint(long long xx, int base, int sign)
     buf[i++] = '-';
 
   while(--i >= 0)
-    //consputc(buf[i]);
-    pputc(buf[i]);
+    consputc(buf[i]);
+    //pputc(buf[i]);
 }
 
 static void
 printptr(uint64 x)
 {
   int i;
-  //consputc('0');
-  pputc('0');
-  //consputc('x');
-  pputc('x');
+  consputc('0');
+  //pputc('0');
+  consputc('x');
+  //pputc('x');
   for (i = 0; i < (sizeof(uint64) * 2); i++, x <<= 4)
-    // consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
-    pputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
+    consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
+    //pputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
 // Print to the console.
@@ -95,8 +95,8 @@ printf(char *fmt, ...)
   va_start(ap, fmt);
   for(i = 0; (cx = fmt[i] & 0xff) != 0; i++){
     if(cx != '%'){
-      //consputc(cx);
-      pputc(cx);
+      consputc(cx);
+      //pputc(cx);
       continue;
     }
     i++;
@@ -134,19 +134,19 @@ printf(char *fmt, ...)
       if((s = va_arg(ap, char*)) == 0)
         s = "(null)";
       for(; *s; s++)
-        //consputc(*s);
-        pputc(*s);
+        consputc(*s);
+        //pputc(*s);
     } else if(c0 == '%'){
-      // consputc('%');
-      pputc('%');
+      consputc('%');
+      //pputc('%');
     } else if(c0 == 0){
       break;
     } else {
       // Print unknown % sequence to draw attention.
-      // consputc('%');
-      // consputc(c0);
-      pputc('%');
-      pputc(c0);
+      consputc('%');
+      consputc(c0);
+      //pputc('%');
+      //pputc(c0);
     }
 
 #if 0
@@ -164,19 +164,19 @@ printf(char *fmt, ...)
       if((s = va_arg(ap, char*)) == 0)
         s = "(null)";
       for(; *s; s++)
-        //consputc(*s);
-        pputc(*s);
+        consputc(*s);
+        //pputc(*s);
       break;
     case '%':
-      //consputc('%');
-      pputc('%');
+      consputc('%');
+      //pputc('%');
       break;
     default:
       // Print unknown % sequence to draw attention.
-      //consputc('%');
-      pputc('%');
-      //consputc(c);
-      pputc(c);
+      consputc('%');
+      //pputc('%');
+      consputc(c);
+      //pputc(c);
       break;
     }
 #endif

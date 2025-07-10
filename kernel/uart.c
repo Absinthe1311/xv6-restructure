@@ -194,11 +194,10 @@ uartintr(void)
     int c = uartgetc(); // 这个就是从UART寄存器读取一个字符
     if(c == -1)
       break;
-    // 这个好像委托到console.c的consoleintr()函数处理
-    // 老师的意思好像是直接调用那个同步的putc发送
+    // 这个好像委托到console.c的consoleintr()函数处理 
     // 这里不能使用console.c的文件
-    // consoleintr(c); 
-    pputc(c); // 直接调用printf.c的pputc函数发送字符
+    consoleintr(c);  // 第九阶段，恢复
+    //pputc(c); // 直接调用printf.c的pputc函数发送字符
   }
 
   // send buffered characters.

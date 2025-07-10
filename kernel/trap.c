@@ -182,10 +182,10 @@ clockintr()
   if(cpuid() == 0){
     acquire(&tickslock);
     ticks++;
-    if(ticks % 30 == 0){ //每30次时钟中断打印出一个T
-        printf("T");
-    }
-    // 这里先注释，好像是用来唤醒进程的内容
+    // if(ticks % 30 == 0){ //每30次时钟中断打印出一个T
+    //     printf("T");
+    // }
+    // // 这里先注释，好像是用来唤醒进程的内容
     wakeup(&ticks);
     release(&tickslock);
   }

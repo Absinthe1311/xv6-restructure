@@ -12,9 +12,9 @@ main()
 {
   // 主核进行的初始化部分
   if(cpuid() == 0){
-    //consoleinit();
+    consoleinit();
 
-    uartinit();
+    //uartinit();
     
     // printf输出部分
     printfinit();
