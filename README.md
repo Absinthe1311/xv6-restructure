@@ -58,5 +58,5 @@
 ## 参考
 
 [xv6源代码](https://github.com/mit-pdos/xv6-riscv.git)
-[WHU课程任务书]
+[WHU课程任务书](https://github.com/Absinthe1311/xv6-tailor/blob/main/%E8%AF%BE%E7%A8%8B%E8%AE%BE%E8%AE%A1%E4%BB%BB%E5%8A%A1%E4%B9%A6%20v2.pdf)
 
